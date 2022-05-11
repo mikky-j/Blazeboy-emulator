@@ -1,0 +1,93 @@
+all non-cpu registers are stored from location 0xff00 to 0xffff
+
+
+TIMING
+ 262,144HZ  4 cycles
+ 65,536HZ   16 cycles
+ 16,384HZ   64 cycles
+ 4,096HZ    256 cycles
+
+INTRUPT CONTROLLERS
+ Interrupt Enable
+  4     Joypad interrupt
+  3     Serial interrupt
+  2     Timer interrupt
+  1     LCD STAT interrupt
+  0     V Blank interrupt
+
+ Interrupt flag destination jumps
+  4     0x60
+  3     0x58
+  2     0x50
+  1     0x48
+  0     0x40
+
+
+
+VRAM Memory Map
+ Background Tiles   4KB
+ Sprite Tiles       4KB
+ Background Map     1KB
+ Window Map         1KB
+
+ The background tiles and the sprite tiles completely overlap with each other
+ They could fully overlap (i.e when they could start from 0x8000 in memory) or partially overlap (i.e the sprite map starts at 0x8000 and the background tiles starts at 0x8800)
+
+
+
+
+PPU
+ 160 x 144 pixels
+ 4 shades of grey
+ 8x8 | 8x16 pixels in a tile, 20 x 18 tiles
+ 40 sprites (10 per line) 
+ 8KB of VRAM
+
+
+ VERTICAL TIMING
+  This is used by the PPU to know draw or display different portions of the screen in different ways
+  The LYC register is used to set which line that you want to start doing your weird stuffs (btw this generates an interrupt to let the system know that you have reached the line)
+
+  Registers
+   LY   This holds the line value of the pixel line on screen that is about to be drawn
+   LYC  This holds the value of the line that you want to start doing your custom stuff. When the LY has reached that line it generates an interrupt
+   STAT This just holds status about the display
+
+
+ TILE
+  16 bytes per tile
+  BGP Register can specify which pallette that I want to use
+  256 Tiles in the system
+  Background Map consists of 32 x 32 tiles
+  The viewport is 20 x 18 tiles
+
+ WINDOW
+  Bit 5 of the lcdc register can toggle the window
+  WX(0xFF4A) register specifies the x location of the window
+  WY(0xFF4B) register specifies the Y location of the window
+
+
+ SPRITES
+  Sprites can either be 8x8 pixels or 8x16 pixels (This can be toggled by bit 2 of LCDC register(0xff40))
+  The OAM entry can specify attributes of a sprites
+  There are only 40 Sprites on the screen at the same time
+  Sprites can't distinguish between a window pixel or a background pixel so it just draws above them
+  You can only have 10 sprites per pixel-line
+  Sprite/Sprite Priority    When two sprites overlap the sprite with the smallest x value will get drawn first
+
+
+THE OAM
+ The OAM has 40 enteries of these properties (OAM RAM).
+ The OAM ram is from 0xfe00 to 0xfe9c
+ Properties
+    Position x     Specifies the sprite's x location (start visible location is 8)
+    Position y     Specifies the sprite's y location (start visible location is 16)
+    Tile number    Specifies which location the sprite is in the system tile map    
+    Flip x         Flips the tiles of the sprite on the x axis
+    Flip Y         Flips the tiles of the sprite on the y axis
+    Priority       When set to 1 it will draw on top of the background pixel with the value(00) but cannot draw on top of any other pixel but if it is set to zero it is drawn on over everything
+    Pallete        Specifies which color palette a sprite should use (You can choose between two (OBP0 (0xFF48) and OBP1(0xFF49)))
+
+THE LCD(THE DISPLAY) 
+ You can basically turn off the display to show a lighter color than white 
+ Bit 0 of the lcdc register can control whether the display is going to be on or off
