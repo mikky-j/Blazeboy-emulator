@@ -34,7 +34,7 @@ pub enum Register8Bit {
     None,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub enum Register16Bit {
     AF,
     BC,
@@ -185,11 +185,12 @@ impl CpuRegisters {
     pub fn ld_16bit_reg(&mut self, register: Register16Bit, data: u16) {
         let values = [(data >> 8) as u8, (data & 0xff) as u8];
         match register {
-            Register16Bit::AF => [self.a, self.b] = values,
+            Register16Bit::AF => [self.a, self.f] = values,
             Register16Bit::BC => [self.b, self.c] = values,
             Register16Bit::DE => [self.d, self.e] = values,
             Register16Bit::HL => [self.h, self.l] = values,
             Register16Bit::SP => self.sp = data,
+            Register16Bit::PC => self.pc = data,
             _ => (),
         }
     }
