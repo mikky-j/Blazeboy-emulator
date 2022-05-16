@@ -24,7 +24,36 @@ impl<'a, 'b> Instruction<'a, 'b> {
 
     // NOP
     pub fn no_op(&mut self) {
-        self.registers.pc += 1;
+        self.length = 1;
+        self.cycle = 4;
+    }
+
+    // DAA
+    pub fn daa(&mut self) {
+        // todo!("Yet to be implemented");
+        let carry = self.registers.get_flag(Flag::Carry(true));
+        let half_carry = self.registers.get_flag(Flag::HalfCarry(true));
+        let negative = self.registers.get_flag(Flag::Subtraction(true));
+        let mut flags: Vec<Flag> = vec![];
+        if !negative {
+            if carry || self.registers.a > 0x99 {
+                self.registers.a = self.registers.a.wrapping_add(0x60);
+                flags.push(Flag::Carry(true));
+            }
+            if half_carry || (self.registers.a & 0xf > 0x9) {
+                self.registers.a = self.registers.a.wrapping_add(0x6);
+            }
+        } else {
+            if carry {
+                self.registers.a = self.registers.a.wrapping_sub(0x60);
+            }
+            if half_carry {
+                self.registers.a = self.registers.a.wrapping_sub(0x6);
+            }
+        }
+        flags.push(Flag::Zero(self.registers.a == 0));
+        flags.push(Flag::HalfCarry(false));
+        self.registers.set_flags(&flags);
         self.length = 1;
         self.cycle = 4;
     }
@@ -152,36 +181,14 @@ impl<'a, 'b> Instruction<'a, 'b> {
     pub fn call_not_eq(&mut self, flag: Flag, addr: u16) {
         (self.length, self.cycle) = match flag {
             Flag::Carry(false) => {
-                bus_write(
-                    &mut self.memory,
-                    self.registers.sp,
-                    (self.registers.pc >> 4) as u8,
-                );
-                bus_write(
-                    &mut self.memory,
-                    self.registers.sp,
-                    (self.registers.pc & 0xF) as u8,
-                );
-                self.registers.pc = addr;
-                self.registers.sp -= 2;
-                (0, 16)
+                self.call(addr);
+                (0, 24)
             }
             Flag::Zero(false) => {
-                bus_write(
-                    &mut self.memory,
-                    self.registers.sp,
-                    (self.registers.pc >> 4) as u8,
-                );
-                bus_write(
-                    &mut self.memory,
-                    self.registers.sp,
-                    (self.registers.pc & 0xF) as u8,
-                );
-                self.registers.pc = addr;
-                self.registers.sp -= 2;
-                (0, 16)
+                self.call(addr);
+                (0, 24)
             }
-            _ => (3, 24),
+            _ => (3, 12),
         };
     }
 
@@ -189,53 +196,22 @@ impl<'a, 'b> Instruction<'a, 'b> {
     pub fn call_eq(&mut self, flag: Flag, addr: u16) {
         (self.length, self.cycle) = match flag {
             Flag::Carry(true) => {
-                bus_write(
-                    &mut self.memory,
-                    self.registers.sp,
-                    (self.registers.pc >> 4) as u8,
-                );
-                bus_write(
-                    &mut self.memory,
-                    self.registers.sp,
-                    (self.registers.pc & 0xF) as u8,
-                );
-                self.registers.pc = addr;
-                self.registers.sp -= 2;
-                (0, 16)
+                self.call(addr);
+                (0, 24)
             }
             Flag::Zero(true) => {
-                bus_write(
-                    &mut self.memory,
-                    self.registers.sp,
-                    (self.registers.pc >> 4) as u8,
-                );
-                bus_write(
-                    &mut self.memory,
-                    self.registers.sp,
-                    (self.registers.pc & 0xF) as u8,
-                );
-                self.registers.pc = addr;
-                self.registers.sp -= 2;
-                (0, 16)
+                self.call(addr);
+                (0, 24)
             }
-            _ => (3, 24),
+            _ => (3, 12),
         };
     }
 
     // CALL a16
     pub fn call(&mut self, addr: u16) {
-        bus_write(
-            &mut self.memory,
-            self.registers.sp,
-            (self.registers.pc >> 8) as u8,
-        );
-        bus_write(
-            &mut self.memory,
-            self.registers.sp,
-            (self.registers.pc & 0xFF) as u8,
-        );
+        self.push_16bit_reg(Register16Bit::PC);
         self.registers.pc = addr;
-        self.registers.sp -= 2;
+        self.length = 0;
         self.cycle = 24;
     }
 
@@ -243,12 +219,39 @@ impl<'a, 'b> Instruction<'a, 'b> {
 
     // RET
     pub fn ret(&mut self) {
-        let hi = bus_read(&self.memory, self.registers.sp + 1).unwrap() as u16;
-        let lo = bus_read(&self.memory, self.registers.sp).unwrap() as u16;
-        self.registers.pc = hi << 4 | lo;
-        self.registers.sp += 2;
-        self.length = 1;
+        self.pop_16bit_reg(Register16Bit::PC);
+        self.length = 0;
         self.cycle = 16;
+    }
+
+    // RET C
+    pub fn ret_eq(&mut self, flag: Flag) {
+        (self.length, self.cycle) = match flag {
+            Flag::Carry(true) => {
+                self.ret();
+                (0, 20)
+            }
+            Flag::Zero(true) => {
+                self.ret();
+                (0, 20)
+            }
+            _ => (1, 8),
+        };
+    }
+
+    // RET NC
+    pub fn ret_not_eq(&mut self, flag: Flag) {
+        (self.length, self.cycle) = match flag {
+            Flag::Carry(false) => {
+                self.ret();
+                (0, 20)
+            }
+            Flag::Zero(false) => {
+                self.ret();
+                (0, 20)
+            }
+            _ => (1, 8),
+        };
     }
 
     // RETI
@@ -279,21 +282,17 @@ impl<'a, 'b> Instruction<'a, 'b> {
         let [hi, lo] = self.registers.get_16bit_reg_value(reg).to_be_bytes();
         bus_write(&mut self.memory, self.registers.sp - 2, lo);
         bus_write(&mut self.memory, self.registers.sp - 1, hi);
-        self.registers.sp -= 2;
+        self.registers.sp = self.registers.sp.wrapping_sub(2);
         self.length = 1;
         self.cycle = 16;
     }
 
-    // ---------------------LOAD INSTRUCTIONS--------------------
+    // ---------------------RST INSTRUCTIONS--------------------
 
     // RST
-    pub fn rst(&mut self, addr: u16) {
-        let ret_addr = addr & 0x38;
-        let hi = (self.registers.pc >> 8) as u8;
-        let lo = (self.registers.pc & 0xFF) as u8;
-        bus_write(&mut self.memory, self.registers.sp - 1, hi);
-        bus_write(&mut self.memory, self.registers.sp - 2, lo);
-        self.registers.sp -= 2;
+    pub fn rst(&mut self, opcode: u16) {
+        let ret_addr = opcode & 0x38;
+        self.push_16bit_reg(Register16Bit::PC);
         self.registers.pc = ret_addr;
         self.length = 1;
         self.cycle = 16;
@@ -353,7 +352,7 @@ impl<'a, 'b> Instruction<'a, 'b> {
     }
 
     // LDH A, (a8)
-    pub fn ld_addr_to_reg_8bit(&mut self, addr: u8) {
+    pub fn ld_8bit_addr_to_reg_8bit(&mut self, addr: u8) {
         let address = 0xFF00 + (addr as u16);
         let value = bus_read(&self.memory, address).unwrap();
         self.registers.a = value;
@@ -362,7 +361,7 @@ impl<'a, 'b> Instruction<'a, 'b> {
     }
 
     // LDH (a8), A
-    pub fn ld_reg_8bit_to_addr(&mut self, addr: u8) {
+    pub fn ld_reg_8bit_to_addr_8bit(&mut self, addr: u8) {
         let address = 0xFF00 + (addr as u16);
         bus_write(&mut self.memory, address, self.registers.a);
         self.length = 2;
@@ -370,12 +369,32 @@ impl<'a, 'b> Instruction<'a, 'b> {
     }
 
     // LD HL, SP+r8
-    pub fn ld_sp_to_hl(&mut self, data: i8) {
+    pub fn ld_sp_to_hl_signed(&mut self, data: i8) {
         let temp = self.registers.sp;
         self.add_sp_r8(data);
         self.registers
             .ld_16bit_reg(Register16Bit::HL, self.registers.sp);
         self.registers.sp = temp;
+    }
+
+    // LD SP, HL
+    pub fn ld_hl_to_sp(&mut self) {
+        let value = self.registers.get_16bit_reg_value(Register16Bit::HL);
+        self.ld_reg_16bit(Register16Bit::SP, value);
+        self.length = 1;
+        self.cycle = 8;
+    }
+
+    // LD (a16), SP
+    pub fn ld_sp_to_mem(&mut self, addr: u16) {
+        let [hi, lo] = self
+            .registers
+            .get_16bit_reg_value(Register16Bit::SP)
+            .to_be_bytes();
+        bus_write(self.memory, addr, lo);
+        bus_write(self.memory, addr.wrapping_add(1), hi);
+        self.length = 3;
+        self.cycle = 20;
     }
 
     // LD BC, d16
