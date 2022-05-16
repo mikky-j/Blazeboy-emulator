@@ -40,4 +40,11 @@ impl Memory {
             self.data[i] = data[i];
         }
     }
+
+    pub fn set_random_number_at_addr(&mut self, data: u16) {
+        let mut thread_rng = rand::thread_rng();
+
+        let random_value = thread_rng.gen::<u8>();
+        self.data[data as usize] = random_value;
+    }
 }
