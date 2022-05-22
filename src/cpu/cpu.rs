@@ -1,4 +1,7 @@
-use crate::{CpuRegisters, Instruction, Memory};
+use crate::{
+    cpu::{CpuRegisters, Instruction},
+    Memory,
+};
 pub struct Cpu {
     pub registers: CpuRegisters,
     pub halted: bool,
@@ -13,9 +16,9 @@ impl Cpu {
     }
 
     pub fn step(&mut self, memory: &mut Memory) {
-        let mut instruction = Instruction::new(&mut self.registers, memory);
         if !self.halted {
-            instruction.set_pc();
+            let mut instruction = Instruction::new();
+            instruction.execute(&mut self.registers, memory, 0, crate::Command::ADC_8Bit);
             self.registers.pc += instruction.length as u16;
         }
     }

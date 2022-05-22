@@ -34,6 +34,91 @@ pub enum Register8Bit {
     None,
 }
 
+impl Register8Bit {
+    pub fn get_left_instruction_argument(opcode: u8) -> Self {
+        let (row, col) = (opcode >> 4, opcode & 0xf);
+        match (row, col) {
+            // ------------------A Register-------------------
+            (0x3, 0xC..=0xE) => Register8Bit::A,
+            (0x7, 0x8..=0xF) => Register8Bit::A,
+            (0x8..=0xB, 0x7 | 0xF) => Register8Bit::A,
+
+            // ------------------B Register-------------------
+            (0x0, 0x4..=0x6) => Register8Bit::B,
+            (0x4, 0x0..=0x7) => Register8Bit::B,
+            (0x8..=0xB, 0x0 | 0x8) => Register8Bit::B,
+
+            // ------------------C Register-------------------
+            (0x0, 0xC..=0xE) => Register8Bit::C,
+            (0x4, 0x8..=0xF) => Register8Bit::C,
+            (0x8..=0xB, 0x1 | 0x9) => Register8Bit::C,
+
+            // ------------------D Register-------------------
+            (0x1, 0x4..=0x6) => Register8Bit::D,
+            (0x5, 0x0..=0x7) => Register8Bit::D,
+            (0x8..=0xB, 0x2 | 0xA) => Register8Bit::D,
+
+            // ------------------E Register-------------------
+            (0x1, 0xC..=0xE) => Register8Bit::E,
+            (0x5, 0x8..=0xF) => Register8Bit::E,
+            (0x8..=0xB, 0x3 | 0xB) => Register8Bit::E,
+
+            // ------------------H Register-------------------
+            (0x2, 0x4..=0x6) => Register8Bit::H,
+            (0x6, 0x0..=0x7) => Register8Bit::H,
+            (0x8..=0xB, 0x4 | 0xC) => Register8Bit::H,
+
+            // ------------------L Register-------------------
+            (0x2, 0xC..=0xE) => Register8Bit::L,
+            (0x6, 0x8..=0xF) => Register8Bit::L,
+            (0x8..=0xB, 0x5 | 0xD) => Register8Bit::L,
+
+            _ => Register8Bit::None,
+        }
+    }
+
+    pub fn get_right_instruction_argument(opcode: u8) -> Self {
+        let (row, col) = (opcode >> 4, opcode & 0xf);
+        match (row, col) {
+            // ------------------A Register-------------------
+            (0x4..=0x7, 0x7 | 0xF) => Register8Bit::A,
+
+            // ------------------B Register-------------------
+            (0x4..=0x7, 0x8 | 0x0) => Register8Bit::B,
+
+            // ------------------C Register-------------------
+            (0x4..=0x7, 0x9 | 0x1) => Register8Bit::C,
+
+            // ------------------D Register-------------------
+            (0x4..=0x7, 0xA | 0x2) => Register8Bit::D,
+
+            // ------------------E Register-------------------
+            (0x4..=0x7, 0xB | 0x3) => Register8Bit::E,
+
+            // ------------------H Register-------------------
+            (0x4..=0x7, 0xC | 0x4) => Register8Bit::H,
+
+            // ------------------L Register-------------------
+            (0x4..=0x7, 0xD | 0x5) => Register8Bit::L,
+
+            _ => Register8Bit::None,
+        }
+    }
+    pub fn get_left_instruction_argument_cb(opcode: u8) -> Self {
+        let (row, col) = (opcode >> 4, opcode & 0xf);
+        match (row, col) {
+            (_, 0x7 | 0xF) => Register8Bit::A,
+            (_, 0x0 | 0x8) => Register8Bit::B,
+            (_, 0x1 | 0x9) => Register8Bit::C,
+            (_, 0x2 | 0xA) => Register8Bit::D,
+            (_, 0x3 | 0xB) => Register8Bit::E,
+            (_, 0x4 | 0xC) => Register8Bit::H,
+            (_, 0x5 | 0xD) => Register8Bit::L,
+            _ => Register8Bit::None,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub enum Register16Bit {
     AF,
@@ -43,6 +128,54 @@ pub enum Register16Bit {
     SP,
     PC,
     None,
+}
+
+impl Register16Bit {
+    pub fn get_left_instruction_argument(opcode: u8) -> Self {
+        let (row, col) = (opcode >> 4, opcode & 0xf);
+        match (row, col) {
+            // ------------------BC Register-------------------
+            (0x0, 0x1..=0x3 | 0xB) => Register16Bit::BC,
+            (0xc, 0x1 | 0x5) => Register16Bit::BC,
+
+            // ------------------DE Register-------------------
+            (0x1, 0x1..=0x3 | 0xB) => Register16Bit::DE,
+            (0xd, 0x1 | 0x5) => Register16Bit::DE,
+
+            // ------------------HL Register-------------------
+            (0x2, 0x1 | 0x3 | 0xB) => Register16Bit::HL,
+            (0xE, 0x1 | 0x5) => Register16Bit::HL,
+
+            // ------------------SP Register-------------------
+            (0x3, 0x1 | 0x3 | 0xB) => Register16Bit::SP,
+
+            // ------------------AF Register-------------------
+            (0xf, 0x1 | 0x5) => Register16Bit::AF,
+
+            _ => Register16Bit::None,
+        }
+    }
+
+    pub fn get_right_instruction_argument(opcode: u8) -> Self {
+        let (row, col) = (opcode >> 4, opcode & 0xf);
+        match (row, col) {
+            // ------------------BC Register-------------------
+            (0x0, 0x9) => Register16Bit::BC,
+            (0x0, 0xA) => Register16Bit::BC,
+
+            // ------------------DE Register-------------------
+            (0x1, 0x9) => Register16Bit::DE,
+            (0x1, 0xA) => Register16Bit::DE,
+
+            // ------------------HL Register-------------------
+            (0x2, 0x9) => Register16Bit::HL,
+
+            // ------------------SP Register-------------------
+            (0x3, 0x9) => Register16Bit::SP,
+
+            _ => Register16Bit::None,
+        }
+    }
 }
 
 impl CpuRegisters {

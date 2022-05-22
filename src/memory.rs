@@ -8,8 +8,9 @@ pub fn bus_read(memory: &Memory, address: u16) -> Option<u8> {
     return Some(memory.data[address as usize]);
 }
 
-pub fn bus_read_16bit_value(memory: &mut Memory, address1: u16, address2: u16) -> Option<u16> {
-    let value = (bus_read(memory, address2)? as u16) << 8 | bus_read(memory, address1)? as u16;
+pub fn bus_read_16bit_value(memory: &Memory, addr: u16) -> Option<u16> {
+    let value =
+        (bus_read(memory, addr.wrapping_add(1))? as u16) << 8 | bus_read(memory, addr)? as u16;
     Some(value)
 }
 
