@@ -91,6 +91,29 @@ pub enum Command {
     Bitwise_Mem,
     Bitwise_8Bit,
     RST,
+    CB,
+    RLC_Reg,
+    RLC_Mem,
+    RRC_Reg,
+    RRC_Mem,
+    RL_Reg,
+    RL_Mem,
+    RR_Reg,
+    RR_Mem,
+    SLA_Reg,
+    SLA_Mem,
+    SRA_Reg,
+    SRA_Mem,
+    Swap_Reg,
+    Swap_Mem,
+    SRL_Reg,
+    SRL_Mem,
+    BIT_Reg,
+    BIT_Mem,
+    RES_Reg,
+    RES_Mem,
+    SET_Reg,
+    SET_Mem,
     None,
 }
 impl Command {
@@ -224,6 +247,7 @@ impl Command {
             (0xD, 0xC) => Command::CALL_Eq_Carry,
             (0xC, 0x4) => Command::CALL_Not_Eq_Zero,
             (0xD, 0x4) => Command::CALL_Not_Eq_Carry,
+            (0xC, 0xB) => Command::CB,
 
             (0xC..=0xF, 0x1) => Command::POP,
             (0xC..=0xF, 0x5) => Command::PUSH,
@@ -244,6 +268,35 @@ impl Command {
             (0xF, 0x9) => Command::LD_HL_SP,
             (0xE, 0x2) => Command::LD_A_C,
             (0xF, 0x2) => Command::LD_C_A,
+            _ => Command::None,
+        }
+    }
+
+    pub fn get_instruction_cb(opcode: u8) -> Self {
+        let (row, col) = (opcode >> 4, opcode & 0xF);
+        match (row, col) {
+            (0x0, 0x0..=0x5 | 0x7) => Command::RLC_Reg,
+            (0x0, 0x6) => Command::RLC_Mem,
+            (0x0, 0x8..=0xD | 0xF) => Command::RRC_Reg,
+            (0x0, 0xE) => Command::RRC_Mem,
+            (0x1, 0x0..=0x5 | 0x7) => Command::RL_Reg,
+            (0x1, 0x6) => Command::RL_Mem,
+            (0x1, 0x8..=0xD | 0xF) => Command::RR_Reg,
+            (0x1, 0xE) => Command::RR_Mem,
+            (0x2, 0x0..=0x5 | 0x7) => Command::SLA_Reg,
+            (0x2, 0x6) => Command::SLA_Mem,
+            (0x2, 0x8..=0xD | 0xF) => Command::SRA_Reg,
+            (0x2, 0xE) => Command::SRA_Mem,
+            (0x3, 0x0..=0x5 | 0x7) => Command::Swap_Reg,
+            (0x3, 0x6) => Command::Swap_Mem,
+            (0x3, 0x8..=0xD | 0xF) => Command::SLA_Reg,
+            (0x3, 0xE) => Command::SLA_Mem,
+            (0x4..=0x7, 0x0..=0x5 | 0x7..=0xD | 0xF) => Command::BIT_Reg,
+            (0x4..=0x7, 0x6 | 0xE) => Command::BIT_Mem,
+            (0x8..=0xB, 0x0..=0x5 | 0x7..=0xD | 0xF) => Command::RES_Reg,
+            (0x8..=0xB, 0x6 | 0xE) => Command::RES_Mem,
+            (0xC..=0xF, 0x0..=0x5 | 0x7..=0xD | 0xF) => Command::SET_Reg,
+            (0xC..=0xF, 0x6 | 0xE) => Command::SET_Mem,
             _ => Command::None,
         }
     }

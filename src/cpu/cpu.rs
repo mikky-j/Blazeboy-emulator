@@ -1,6 +1,7 @@
 use crate::{
+    bus_read,
     cpu::{CpuRegisters, Instruction},
-    Memory,
+    Command, Memory,
 };
 pub struct Cpu {
     pub registers: CpuRegisters,
@@ -16,10 +17,21 @@ impl Cpu {
     }
 
     pub fn step(&mut self, memory: &mut Memory) {
+        let mut instruction = Instruction::new();
         if !self.halted {
-            let mut instruction = Instruction::new();
-            instruction.execute(&mut self.registers, memory, 0, crate::Command::ADC_8Bit);
-            self.registers.pc += instruction.length as u16;
+            let opcode = bus_read(&memory, self.registers.pc).unwrap();
+            let command = Command::get_instruction(opcode);
+            let (opcode, command) = match command {
+                Command::CB => (
+                    bus_read(&memory, self.registers.pc.wrapping_add(1)).unwrap(),
+                    Command::get_instruction_cb(
+                        bus_read(&memory, self.registers.pc.wrapping_add(1)).unwrap(),
+                    ),
+                ),
+                _ => (opcode, command),
+            };
+            instruction.execute(&mut self.registers, memory, opcode, command);
+            self.registers.pc = self.registers.pc.wrapping_add(instruction.length as u16);
         }
     }
 }

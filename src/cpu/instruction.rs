@@ -2,7 +2,6 @@ use crate::cpu::{fetch::Command, CpuRegisters, Flag, Register16Bit, Register8Bit
 use crate::memory::bus_read_16bit_value;
 use crate::{bus_read, bus_write, get_bit, Memory};
 
-#[derive(PartialEq)]
 pub enum BitwiseOperator {
     And,
     Or,
@@ -37,6 +36,7 @@ impl Instruction {
         opcode: u8,
         command: Command,
     ) {
+        let (row, col) = (opcode >> 4, opcode & 0xF);
         match command {
             Command::NOP => self.no_op(),
             Command::RLCA => self.rlca(registers),
@@ -327,6 +327,89 @@ impl Instruction {
             }
             Command::LD_C_A => {
                 self.ld_c_a(registers, memory);
+            }
+            Command::RLC_Reg => {
+                let reg = Register8Bit::get_left_instruction_argument(opcode);
+                self.rlc_reg_8bit(registers, reg);
+            }
+            Command::RLC_Mem => {
+                self.rlc_mem_reg(registers, memory);
+            }
+            Command::RRC_Reg => {
+                let reg = Register8Bit::get_left_instruction_argument(opcode);
+                self.rrc_reg_8bit(registers, reg);
+            }
+            Command::RRC_Mem => {
+                self.rrc_mem_reg(registers, memory);
+            }
+            Command::RL_Reg => {
+                let reg = Register8Bit::get_left_instruction_argument(opcode);
+                self.rl_reg_8bit(registers, reg);
+            }
+            Command::RL_Mem => {
+                self.rl_mem_reg(registers, memory);
+            }
+            Command::RR_Reg => {
+                let reg = Register8Bit::get_left_instruction_argument(opcode);
+                self.rr_reg_8bit(registers, reg);
+            }
+            Command::RR_Mem => {
+                self.rr_mem_reg(registers, memory);
+            }
+            Command::SLA_Reg => {
+                let reg = Register8Bit::get_left_instruction_argument(opcode);
+                self.sla_reg_8bit(registers, reg);
+            }
+            Command::SLA_Mem => {
+                self.sla_mem_reg(registers, memory);
+            }
+            Command::SRA_Reg => {
+                let reg = Register8Bit::get_left_instruction_argument(opcode);
+                self.sra_reg_8bit(registers, reg);
+            }
+            Command::SRA_Mem => {
+                self.sra_mem_reg(registers, memory);
+            }
+            Command::Swap_Reg => {
+                let reg = Register8Bit::get_left_instruction_argument(opcode);
+                self.swap_reg_8bit(registers, reg);
+            }
+            Command::Swap_Mem => {
+                self.swap_mem_reg(registers, memory);
+            }
+            Command::SRL_Reg => {
+                let reg = Register8Bit::get_left_instruction_argument(opcode);
+                self.srl_reg_8bit(registers, reg);
+            }
+            Command::SRL_Mem => {
+                self.srl_mem_reg(registers, memory);
+            }
+            Command::BIT_Reg => {
+                let bit = ((row - 0x4) * 2) + if col > 0x7 { 1 } else { 0 };
+                let reg = Register8Bit::get_left_instruction_argument_cb(opcode);
+                self.bit_reg_8bit(registers, reg, bit);
+            }
+            Command::BIT_Mem => {
+                let bit = ((row - 0x4) * 2) + if col > 0x7 { 1 } else { 0 };
+                self.bit_mem_reg(registers, memory, bit);
+            }
+            Command::RES_Reg => {
+                let bit = ((row - 0x8) * 2) + if col > 0x7 { 1 } else { 0 };
+                let reg = Register8Bit::get_left_instruction_argument_cb(opcode);
+                self.res_reg_8bit(registers, reg, bit);
+            }
+            Command::RES_Mem => {
+                let bit = ((row - 0x8) * 2) + if col > 0x7 { 1 } else { 0 };
+                self.res_mem_reg(registers, memory, bit);
+            }
+            Command::SET_Reg => {
+                let bit = ((row - 0xC) * 2) + if col > 0x7 { 1 } else { 0 };
+                let reg = Register8Bit::get_left_instruction_argument_cb(opcode);
+                self.set_reg_8bit(registers, reg, bit);
+            }
+            Command::SET_Mem => {
+                let bit = ((row - 0xC) * 2) + if col > 0x7 { 1 } else { 0 };
+                self.set_mem_reg(registers, memory, bit);
             }
             _ => (),
         }

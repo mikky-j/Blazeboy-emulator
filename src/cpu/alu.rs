@@ -295,9 +295,13 @@ impl Instruction {
             BitwiseOperator::Xor => registers.a ^ value,
             _ => return,
         };
+        let half_carry = match operator {
+            BitwiseOperator::And => true,
+            _ => false,
+        };
         let flags = [
             Flag::Carry(false),
-            Flag::HalfCarry(operator == BitwiseOperator::And),
+            Flag::HalfCarry(half_carry),
             Flag::Subtraction(false),
             Flag::Zero(res == 0),
         ];

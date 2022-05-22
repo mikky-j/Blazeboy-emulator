@@ -119,7 +119,7 @@ impl Register8Bit {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Copy)]
 pub enum Register16Bit {
     AF,
     BC,
@@ -339,20 +339,6 @@ impl CpuRegisters {
             Register8Bit::H => self.h,
             Register8Bit::L => self.l,
             _ => 0,
-        };
-        result
-    }
-    pub fn get_mut_8bit_reg_value(&mut self, register: Register8Bit) -> &mut u8 {
-        let result = match register {
-            Register8Bit::A => &mut self.a,
-            Register8Bit::B => &mut self.b,
-            Register8Bit::C => &mut self.c,
-            Register8Bit::D => &mut self.d,
-            Register8Bit::E => &mut self.e,
-            Register8Bit::F => &mut self.f,
-            Register8Bit::H => &mut self.h,
-            Register8Bit::L => &mut self.l,
-            _ => &mut self.a,
         };
         result
     }

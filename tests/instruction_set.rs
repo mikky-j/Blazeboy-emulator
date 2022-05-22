@@ -430,14 +430,17 @@ mod instruction_test {
         let mut memory = Memory::new();
         let mut instruction = Instruction::new();
         for reg in REGISTER_ARR_16BIT {
-            if reg != Register16Bit::SP {
-                registers.set_random_number_reg_16bit(Register16Bit::SP);
-                registers.set_random_number_reg_16bit(reg);
-                instruction.push_16bit_reg(&mut registers, &mut memory, reg);
-                let value1 = bus_read(&memory, registers.sp + 1).unwrap();
-                let value2 = bus_read(&memory, registers.sp).unwrap();
-                let value = (value1 as u16) << 8 | value2 as u16;
-                assert_eq!(registers.get_16bit_reg_value(reg), value);
+            match reg {
+                Register16Bit::SP => (),
+                _ => {
+                    registers.set_random_number_reg_16bit(Register16Bit::SP);
+                    registers.set_random_number_reg_16bit(reg);
+                    instruction.push_16bit_reg(&mut registers, &mut memory, reg);
+                    let value1 = bus_read(&memory, registers.sp + 1).unwrap();
+                    let value2 = bus_read(&memory, registers.sp).unwrap();
+                    let value = (value1 as u16) << 8 | value2 as u16;
+                    assert_eq!(registers.get_16bit_reg_value(reg), value);
+                }
             }
         }
         check_instruction_props(&instruction, 1, 16);
@@ -449,14 +452,17 @@ mod instruction_test {
         let mut memory = Memory::new();
         let mut instruction = Instruction::new();
         for reg in REGISTER_ARR_16BIT {
-            if reg != Register16Bit::SP {
-                registers.set_random_number_reg_16bit(Register16Bit::SP);
-                let value1 = bus_read(&memory, registers.sp + 1).unwrap();
-                let value2 = bus_read(&memory, registers.sp).unwrap();
-                let value = (value1 as u16) << 8 | value2 as u16;
-                instruction.pop_16bit_reg(&mut registers, &mut memory, reg);
+            match reg {
+                Register16Bit::SP => (),
+                _ => {
+                    registers.set_random_number_reg_16bit(Register16Bit::SP);
+                    let value1 = bus_read(&memory, registers.sp + 1).unwrap();
+                    let value2 = bus_read(&memory, registers.sp).unwrap();
+                    let value = (value1 as u16) << 8 | value2 as u16;
+                    instruction.pop_16bit_reg(&mut registers, &mut memory, reg);
 
-                assert_eq!(registers.get_16bit_reg_value(reg), value);
+                    assert_eq!(registers.get_16bit_reg_value(reg), value);
+                }
             }
         }
         check_instruction_props(&instruction, 1, 12);
