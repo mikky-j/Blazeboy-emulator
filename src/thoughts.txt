@@ -37,57 +37,150 @@ VRAM Memory Map
 
 
 PPU
- 160 x 144 pixels
- 4 shades of grey
- 8x8 | 8x16 pixels in a tile, 20 x 18 tiles
- 40 sprites (10 per line) 
- 8KB of VRAM
+  160 x 144 pixels
+  4 shades of grey
+  8x8 | 8x16 pixels in a tile, 20 x 18 tiles
+  40 sprites (10 per line) 
+  8KB of VRAM
 
 
- VERTICAL TIMING
-  This is used by the PPU to know draw or display different portions of the screen in different ways
-  The LYC register is used to set which line that you want to start doing your weird stuffs (btw this generates an interrupt to let the system know that you have reached the line)
+  VERTICAL TIMING
+    This is used by the PPU to know draw or display different portions of the screen in different ways
+    The LYC register is used to set which line that you want to start doing your weird stuffs (btw this generates an interrupt to let the system know that you have reached the line)
 
-  Registers
-   LY   This holds the line value of the pixel line on screen that is about to be drawn
-   LYC  This holds the value of the line that you want to start doing your custom stuff. When the LY has reached that line it generates an interrupt
-   STAT This just holds status about the display
-
-
- TILE
-  16 bytes per tile
-  BGP Register can specify which pallette that I want to use
-  256 Tiles in the system
-  Background Map consists of 32 x 32 tiles
-  The viewport is 20 x 18 tiles
-
- WINDOW
-  Bit 5 of the lcdc register can toggle the window
-  WX(0xFF4A) register specifies the x location of the window
-  WY(0xFF4B) register specifies the Y location of the window
+    Registers
+      LY   This holds the line value of the pixel line on screen that is about to be drawn
+      LYC  This holds the value of the line that you want to start doing your custom stuff. When the LY has reached that line it generates an interrupt
+      STAT This just holds status about the display
 
 
- SPRITES
-  Sprites can either be 8x8 pixels or 8x16 pixels (This can be toggled by bit 2 of LCDC register(0xff40))
-  The OAM entry can specify attributes of a sprites
-  There are only 40 Sprites on the screen at the same time
-  Sprites can't distinguish between a window pixel or a background pixel so it just draws above them
-  You can only have 10 sprites per pixel-line
-  Sprite/Sprite Priority    When two sprites overlap the sprite with the smallest x value will get drawn first
+  TILE
+    
+    It can be either 8x8 pixels or 8x16 pixels (It can only be one system wide)
+    16 bytes per tile
+    BGP Register can specify which pallette that I want to use
+    256 Tiles in the system
+    Background Map consists of 32 x 32 tiles
+    The viewport is 20 x 18 tiles
+    2 bytes represent a row of pixels 
+    Example
+      A row: 0xA5 0xC3 
+      0xA5 -> 1  0  1  0  0  1  0  1
+      0xC3 -> 1  1  0  0  0  0  1  1
+      row ->  11 10 01 00 00 01 10 11
+    
+    Note: Data is gotten from the memory in the little-endian format 
 
+    The first 2 bytes makes up a row and the next 2 make up the next row and so on
+
+  VIEWPORT
+    This is 20x18 tiles
+    It is a section of the background map(32 x 32 tiles)
+    Its offset from the top left border of the background map is determined by two registers (i.e SCX and SCY registers)
+    When the viewport exceeds the borders of the background it wraps back around
+
+
+  TILE DATA
+    The locations 0x8000-0x97FF in the VRAM store the background and window graphics Data
+    To get the data for a tile you need a tile number which can be determined by "addressing modes"
+    
+    ADDRESSING MODES
+      The 4 bit of the LCDC register is used to set the addressing mode
+      The effective address of a tile is 8000 + (TILE_NUMBER * 16)
+      8000 addressing mode -> The tile number is an unsigned number 
+      8800 addressing mode -> The tile number is an signed number 
+
+
+
+  PIXELS
+    4 shades of gray (each represented by 2bit values)
+    00 -> white
+    01 -> light gray 
+    10 -> dark gray
+    11 -> black
+
+
+  WINDOW
+    this is another 32x32 tile layer that sits on top of the background
+    bit 5 of the lcdc register can toggle the window
+
+    wx(0xff4a) register specifies the x location of the window
+    wy(0xff4b) register specifies the y location of the window
+
+    in order to place a window on the top left side of the screen the values of the wx and wy registers must be 0 and 7 respectively
+
+
+
+  SPRITES
+    Sprites can either be 8x8 pixels or 8x16 pixels (this can be toggled by bit 2 of lcdc register(0xff40))
+    The OAM entry can specify attributes of a sprites
+    There are only 40 sprites on the screen at the same time
+    Sprites can't distinguish between a window pixel or a background pixel so it just draws above them
+    You can only have 10 sprites per pixel-line
+
+    Sprite/Sprite priority    when two sprites overlap the sprite with the smallest x value will get drawn first
+  
+
+  SCANLINE
+    The scanline is a row of pixels, there are a total of 154 scanlines(the last 10 are pseudo-scanlines)
+    The LY register stores the current number of the scanline currently being drawn
+    When the PPU is drawing a scan line it can enter either one of four modes
+
+    PPU MODES
+      OAM SCAN MODE
+        The is mode is entered at the start of every scanline (except if the PPU is in V-Blank Mode) before pixels are drawn
+        In this mode, the PPU searches the OAM for sprites that are meant to be drawn. 
+        This takes 80 cycles to complete
+        A sprite will be added to the buffer if:
+          Its location is greater than 0
+          The sprites Y value + Sprite's Height is in between the value of the LY register + 16
+          If the amount of sprites stored in the buffer is less than 10
+      
+      DRAWING MODE
+        This is when the PPU can start drawing stuff.
+      
+      H-Blank Mode
+        This mode is just acting as padding so that the PPU can use 456 cycles on drawing a scanline
+        From what I could find the PPU does nothing in this mode
+      
+      V-Blank Mode
+        In this mode the buffers for the pseudo-scanlines are created but not drawn cause the resolution of the LCD is 160x144
+        That means that there is 144 visible scan lines
+        In that case, this mode takes 4560 cycles to completes cause of the 10 pseudo-scanlines
+
+
+THE PIXEL FIFO
+  This has 2 shift registers that can hold up 8 pixels
+  Each pixel stored has its color, palette, sprite prority, and background priority stored
+  SHIFT REGISTERS
+    Background Register ->   This deals with background or window pixels
+    Sprite Register     ->   This deals with sprite pixels
 
 THE OAM
- The OAM has 40 enteries of these properties (OAM RAM).
- The OAM ram is from 0xfe00 to 0xfe9c
+ the OAM has 40 enteries of these properties (oam ram).
+ the OAM ram is from 0xfe00 to 0xfe9c
  Properties
-    Position x     Specifies the sprite's x location (start visible location is 8)
-    Position y     Specifies the sprite's y location (start visible location is 16)
-    Tile number    Specifies which location the sprite is in the system tile map    
-    Flip x         Flips the tiles of the sprite on the x axis
-    Flip Y         Flips the tiles of the sprite on the y axis
-    Priority       When set to 1 it will draw on top of the background pixel with the value(00) but cannot draw on top of any other pixel but if it is set to zero it is drawn on over everything
-    Pallete        Specifies which color palette a sprite should use (You can choose between two (OBP0 (0xFF48) and OBP1(0xFF49)))
+    Position Y     specifies the sprite's y location (start visible location is 16)
+    Position X     specifies the sprite's x location (start visible location is 8)
+    Tile number    specifies which location the sprite is in the system tile map    
+    Flip X         flips the tiles of the sprite on the x axis
+    Flip Y         flips the tiles of the sprite on the y axis
+    Priority       when set to 1 it will draw on top of the background pixel with the value(00) but cannot draw on top of any other pixel but if it is set to zero it is drawn on over everything
+    Pallete        specifies which color palette a sprite should use (you can choose between two (obp0 (0xff48) and obp1(0xff49)))
+  
+  OAM ENTRY STRUCTURE
+    Each OAM entry contains 4 bytes
+    Byte 0 -> Position y
+    Byte 1 -> Position X
+    Byte 2 -> Tile Number
+    Byte 3 -> Sprite Flags
+      Bit 7   -> Sprite priority
+      Bit 6   -> Flip y
+      Bit 5   -> Flip x
+      Bit 4   -> Pallete Number
+      Bit 3-0 -> Color GameBoy flags 
+
 
 THE LCD(THE DISPLAY) 
- You can basically turn off the display to show a lighter color than white 
- Bit 0 of the lcdc register can control whether the display is going to be on or off
+  you can basically turn off the display to show a lighter color than white 
+  bit 0 of the lcdc register can control whether the display is going to be on or off
